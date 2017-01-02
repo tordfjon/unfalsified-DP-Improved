@@ -39,6 +39,7 @@ if flag == 0
    u_dat.temp = zeros(u_dat.total_number,0); %%% for determining instantaneous cost
    u_dat.myj = zeros(u_dat.total_number,0);
    u_dat.count = 0;
+   u_dat.t_switch = 0;
    
    str = []; ts  = [delta 0];% sample time is delta
 
@@ -64,14 +65,15 @@ elseif flag == 2
         end
     end
     
-    
-    if isempty(unfalsified_ball_index) % i.e. no controller has better performance including hysteresis step
+    time_since_last = t-u_dat.t_switch;
+    if isempty(unfalsified_ball_index)% || time_since_last < 1% i.e. no controller has better performance including hysteresis step
         % Algorithm does not change controller
     else % The unfalsified ball index set is non-empty, therfore a new controller is chosen
         [~, next_controller] = min(u_dat.J(unfalsified_ball_index));   % New Controller selection Criterion
         [u_dat.kp, u_dat.ki, u_dat.kd] = set_K_parameter(u_dat.K, unfalsified_ball_index, next_controller);
         u_dat.prev_index = u_dat.cur_index; 
         u_dat.cur_index = unfalsified_ball_index(next_controller);
+        u_dat.t_switch = t;
     end
    
    

@@ -14,7 +14,7 @@ if flag == 0
    sizes = simsizes;   
    sizes.NumContStates  = 0;
    sizes.NumDiscStates  = 0;   
-   sizes.NumOutputs     = 3;
+   sizes.NumOutputs     = 4;
    sizes.NumInputs      = 8;
    sizes.DirFeedthrough = 1;
    sizes.NumSampleTimes = 1;
@@ -27,6 +27,7 @@ if flag == 0
    u_pid.trigger = 1;
    u_pid.new_slow_state  = 0; % This value need proper initialization if smooth controller initialization for non-zero initial conditions are used. Should be done in the output routine for count==0
    u_pid.new_fast_state  = 0; % Initialize to zero every time
+   u_pid.new_comp_state  = 0;
    
    u_pid.r      = 0; 
    u_pid.y      = 0;
@@ -60,7 +61,7 @@ elseif flag == 3
   %%% But do not reset the states at the very first iteration, when parameters changes from zero to the initial values
   
   if (u_pid.kp ~= kp_new || u_pid.ki ~= ki_new || u_pid.kd ~= kd_new) % && (u_pid.count ~= 0)         
-      [u_pid.new_slow_state , u_pid.new_fast_state , u_pid.trigger] = ...                               
+      [u_pid.new_slow_state , u_pid.new_comp_state , u_pid.new_fast_state , u_pid.trigger] = ...                               
                       new_states_2rd(   u_pid.kp , u_pid.ki , u_pid.kd ,...
                                         kp_new , ki_new , kd_new , u_pid.y , ...
                                         u_pid.r , u_pid.u_prev , u_pid.trigger ,...
@@ -70,7 +71,7 @@ elseif flag == 3
   u_pid.kp = kp_new; u_pid.ki = ki_new; u_pid.kd = kd_new;  %% update states
   u_pid.count = u_pid.count + 1;
   % out put new integrator state, new differentiator state and trigger
-  sys = [u_pid.new_fast_state ; u_pid.trigger ; u_pid.new_slow_state];
+  sys = [u_pid.new_comp_state ; u_pid.new_fast_state ; u_pid.trigger ; u_pid.new_slow_state];
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 elseif flag == 4
