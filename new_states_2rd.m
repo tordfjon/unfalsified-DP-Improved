@@ -1,7 +1,7 @@
 %%   Revised 2016 by Vahid to make it work with new Matlab 2015
 function [new_slow_state , new_comp_state , new_fast_state , new_trigger] = new_states_2rd(kp_current, ki_current, kd_current, ...
                                        kp_new, ki_new, kd_new, y, r, ...
-                                       u_prev , trigger, epsilon, delta)
+                                       u_prev , trigger, epsilon, delta , old_slow_state)
 
 xi = 0; % Cjs*xi = 0, i.e. xi in null spcae of Cjs.
                                    
@@ -31,17 +31,17 @@ dk2_new = kd_new/epsilon;
 
 [Ajs, Bjs, Cjs, Djs] = ssdata(c2d(ss(ak1_new,bk1_new,ck1_new,dk1_new),delta));
 [Ajf, Bjf, Cjf, Djf] = ssdata(c2d(ss(ak2_new,bk2_new,ck2_new,dk2_new),delta));
-   
+
 
 Cjs_pi = Cjs'/(Cjs*Cjs'); % Pseudo-inverse for nonsquare C-matrix
         % New delta SLOW state
-new_slow_state = Cjs_pi*(u_prev);%+Djf*(r-y))) + xi;%( (Cis-Cjs)*x_integrator + Dis*(r-y) - Djs*(r-y) ) / Cjs; % This works flawlessly
+new_slow_state = 0;% old_slow_state; %Cjs_pi*(u_prev);%+Djf*(r-y))) + xi;%( (Cis-Cjs)*x_integrator + Dis*(r-y) - Djs*(r-y) ) / Cjs; % This works flawlessly
 
         % New delta FAST state
 new_fast_state = 0;
       
-% New delta FAST state
-new_comp_state = Cjs_pi*(-(Djf*(r-y)) - (Djs*(r-y)));
+        % New delta FAST state
+new_comp_state = Cjs_pi*(u_prev-(Djf*(r-y)) - (Djs*(r-y)));
 
 
 if trigger > 0
