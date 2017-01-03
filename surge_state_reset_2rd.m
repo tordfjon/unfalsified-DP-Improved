@@ -55,8 +55,12 @@ elseif flag == 3
   u_pid.r = u(4); u_pid.y=u(5);  
                     u_pid.state_i = u(8); u_pid.state_d = u(7); % Soon to be removed
   u_pid.u_prev          = u(6);
-  u_pid.new_fast_state  = u(7);
-  u_pid.new_slow_state  = u(8);
+  
+  old_fast_state = u(7);
+  old_slow_state = u(8);
+  
+  u_pid.new_fast_state  = old_fast_state; %u(7);
+  u_pid.new_slow_state  = old_slow_state; %u(8);
   %%% If there is a change in Controller parameters, then reset the states & the trigger signal
   %%% But do not reset the states at the very first iteration, when parameters changes from zero to the initial values
   
@@ -65,7 +69,7 @@ elseif flag == 3
                       new_states_2rd(   u_pid.kp , u_pid.ki , u_pid.kd ,...
                                         kp_new , ki_new , kd_new , u_pid.y , ...
                                         u_pid.r , u_pid.u_prev , u_pid.trigger ,...
-                                        epsilon , delta , u_pid.state_i);         
+                                        epsilon , delta , old_slow_state);         
   end
   
   u_pid.kp = kp_new; u_pid.ki = ki_new; u_pid.kd = kd_new;  %% update states

@@ -35,13 +35,13 @@ dk2_new = kd_new/epsilon;
 
 Cjs_pi = Cjs'/(Cjs*Cjs'); % Pseudo-inverse for nonsquare C-matrix
         % New delta SLOW state
-new_slow_state = 0;% old_slow_state; %Cjs_pi*(u_prev);%+Djf*(r-y))) + xi;%( (Cis-Cjs)*x_integrator + Dis*(r-y) - Djs*(r-y) ) / Cjs; % This works flawlessly
+new_slow_state = Cjs_pi*Cis*old_slow_state;% old_slow_state; %Cjs_pi*(u_prev);%+Djf*(r-y))) + xi;%( (Cis-Cjs)*x_integrator + Dis*(r-y) - Djs*(r-y) ) / Cjs; % This works flawlessly
 
         % New delta FAST state
 new_fast_state = 0;
       
         % New delta FAST state
-new_comp_state = Cjs_pi*(u_prev-(Djf*(r-y)) - (Djs*(r-y)));
+new_comp_state = (u_prev -(Djf*(r-y)) - (Djs*(r-y)) - Cis*old_slow_state);
 
 
 if trigger > 0
