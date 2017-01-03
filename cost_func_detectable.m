@@ -23,6 +23,9 @@ if flag == 0
    sizes.NumSampleTimes = 1;
    sys = simsizes(sizes);
    
+   u_cost.window = 10;
+   u_cost.fading = 1;
+   
    u_cost.J     = zeros(u_cost.total_number,1); %u_cost.total_number is the total number of initially unfalsified controllers
    u_cost.J2    = zeros(u_cost.total_number,1);
    u_cost.index = [1:u_cost.total_number]';
@@ -60,7 +63,8 @@ elseif flag == 3
 
         [kp,ki,kd] = set_K_parameter(u_cost.K,u_cost.index,i);
         K = [kp,ki,kd];
-        u_cost.J2(i) = consistency_test_detectable(u(1), u(2), u(2+i),K,i,u_cost.count);
+        u_cost.J2(i) = consistency_test_detectable_windowing_fading( u(1), u(2), u(2+i), K , i , u_cost.count, ...
+                                                    u_cost.window , u_cost.fading);
                                                    %y    &u    &r     K i
     end
     % out put cost function J
