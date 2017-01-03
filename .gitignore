@@ -10,4 +10,4 @@
 *.mex*
 
 # Simulink Code Generation
-.slprj/
+.slprj\
