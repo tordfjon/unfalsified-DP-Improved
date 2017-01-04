@@ -66,7 +66,7 @@ elseif flag == 2
     end
     
     time_since_last = t-u_dat.t_switch;
-    if isempty(unfalsified_ball_index)% || time_since_last < 1% i.e. no controller has better performance including hysteresis step
+    if isempty(unfalsified_ball_index) %|| time_since_last < 1% i.e. no controller has better performance including hysteresis step
         % Algorithm does not change controller
     else % The unfalsified ball index set is non-empty, therfore a new controller is chosen
         [~, next_controller] = min(u_dat.J(unfalsified_ball_index));   % New Controller selection Criterion
