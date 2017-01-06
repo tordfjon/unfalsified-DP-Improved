@@ -43,9 +43,7 @@ if flag == 0
       
       if (cp==0 || ci==0 || cd==0)
           error('This is a relization of PID controller, hence Kp, Ki, Kd of all candidate controllers should be nonzero')
-          % This error message is necessary as the generator uses the
-          % inverse of controller transferfunction. For all parameters
-          % equal to zero, this turns out real bad :-( 
+
       end
       
       controller1 = tf(cp,1) + tf(ci,[1 0]);
