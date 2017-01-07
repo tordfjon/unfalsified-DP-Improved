@@ -21,7 +21,7 @@ if flag == 0
    sizes = simsizes;   
    sizes.NumContStates  = 0;                        %Number of continuous states
    sizes.NumDiscStates  = 0;                        %Number of discrete states   
-   sizes.NumOutputs     = u_dat.total_number + 4;   %Number of outputs
+   sizes.NumOutputs     = u_dat.total_number + 5;   %Number of outputs
    sizes.NumInputs      = u_dat.total_number;       %Number of inputs
    sizes.DirFeedthrough = 0;                        %Flag for direct feedthrough
    sizes.NumSampleTimes = 1;                        %Number of sample times
@@ -42,7 +42,7 @@ if flag == 0
    u_dat.t_switch = 0;
    
         %% Variables for LICLA
-    u_dat.eta   = 1;
+    u_dat.eta   = 5;
     u_dat.deta  = 0.5;
     u_dat.unfalsified_controller_index = u_dat.index;
    
@@ -90,6 +90,9 @@ elseif flag == 2
                 temp = u_dat.unfalsified_controller_index(u_dat.unfalsified_controller_index ~= u_dat.cur_index);
                 if isempty(temp) % Reinitialize falsified controllers that might performe better with varying system
                     temp = u_dat.index;
+                    % % This is no longer LICLA but ICLA as increase in
+                    %   nonlinear!!
+                    u_dat.deta = u_dat.deta*3;
                 end
                 u_dat.unfalsified_controller_index = temp;
                 
@@ -100,6 +103,9 @@ elseif flag == 2
                 u_dat.eta = u_dat.eta + u_dat.deta;
             else
                 % Do nothing and continue with current active controller
+                % % This is no longer LICLA but ICLA as increase in
+                %   nonlinear!!
+                u_dat.deta = 0.5;
             end
             
         otherwise 
@@ -107,10 +113,7 @@ elseif flag == 2
     end
    
    
-   
-   %%%% IMPORTANT LINE! %%%%
-% % %    u_dat.m = j;                  %  # of unfalsified controllers up to now
-   %%%% IMPORTANT LINE! %%%%
+
 
    sys = [];
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%   >>>  Output routine  <<<    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -147,7 +150,7 @@ elseif flag == 3
    
    
    % output kp,ki,kd, Current Controller Index & all Unfalsified Controller Index
-    sys = [u_dat.kp; u_dat.ki; u_dat.kd; u_dat.cur_index; u_dat.index];
+    sys = [u_dat.eta ; u_dat.kp; u_dat.ki; u_dat.kd; u_dat.cur_index; u_dat.index];
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%    
 elseif flag == 4

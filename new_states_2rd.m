@@ -32,17 +32,29 @@ dk2_new = kd_new/epsilon;
 [Ajs, Bjs, Cjs, Djs] = ssdata(c2d(ss(ak1_new,bk1_new,ck1_new,dk1_new),delta));
 [Ajf, Bjf, Cjf, Djf] = ssdata(c2d(ss(ak2_new,bk2_new,ck2_new,dk2_new),delta));
 
+%%%% Code from before 07.01.2016 where bumpless transfer is not really
+%%%% working. 
+% % % Cjs_pi = Cjs'/(Cjs*Cjs'); % Pseudo-inverse for nonsquare C-matrix
+% % %         % New delta SLOW state
+% % % new_slow_state = Cjs_pi*Cis*old_slow_state;% old_slow_state; %Cjs_pi*(u_prev);%+Djf*(r-y))) + xi;%( (Cis-Cjs)*x_integrator + Dis*(r-y) - Djs*(r-y) ) / Cjs; % This works flawlessly
+% % % 
+% % %         % New delta FAST state
+% % % new_fast_state = 0;
+% % %       
+% % %         % New delta FAST state
+% % % new_comp_state = (u_prev -(Djf*(r-y)) - (Djs*(r-y)) - Cis*old_slow_state);
+% % % 
 
+%%%% Experiment 07.01.2016
 Cjs_pi = Cjs'/(Cjs*Cjs'); % Pseudo-inverse for nonsquare C-matrix
         % New delta SLOW state
-new_slow_state = Cjs_pi*Cis*old_slow_state;% old_slow_state; %Cjs_pi*(u_prev);%+Djf*(r-y))) + xi;%( (Cis-Cjs)*x_integrator + Dis*(r-y) - Djs*(r-y) ) / Cjs; % This works flawlessly
+new_slow_state = Cjs_pi*(u_prev - Djs*(r-y));% old_slow_state; %Cjs_pi*(u_prev);%+Djf*(r-y))) + xi;%( (Cis-Cjs)*x_integrator + Dis*(r-y) - Djs*(r-y) ) / Cjs; % This works flawlessly
 
         % New delta FAST state
-new_fast_state = 0;
+new_fast_state = epsilon*(r-y);
       
         % New delta FAST state
-new_comp_state = (u_prev -(Djf*(r-y)) - (Djs*(r-y)) - Cis*old_slow_state);
-
+new_comp_state = 0;
 
 if trigger > 0
    new_trigger = -1;
