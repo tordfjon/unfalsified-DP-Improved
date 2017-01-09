@@ -31,3 +31,11 @@ for j=ni:-1:1
       end
    end
 end
+
+%% test modification to avoid all intermediate mixed sign controllers
+K = [  -10     -0.05    2;
+       -1.2    -0.05    2;
+        1.2     0.05    2;
+        10      0.05    2   ];
+m = size(K,1);
+end

@@ -44,6 +44,7 @@ if flag == 0
         %% Variables for LICLA
     u_dat.eta   = 5;
     u_dat.deta  = 0.5;
+    u_dat.increase_deta = 'false';
     u_dat.unfalsified_controller_index = u_dat.index;
    
    str = []; ts  = [delta 0];% sample time is delta
@@ -90,9 +91,7 @@ elseif flag == 2
                 temp = u_dat.unfalsified_controller_index(u_dat.unfalsified_controller_index ~= u_dat.cur_index);
                 if isempty(temp) % Reinitialize falsified controllers that might performe better with varying system
                     temp = u_dat.index;
-                    % % This is no longer LICLA but ICLA as increase in
-                    %   nonlinear!!
-                    u_dat.deta = u_dat.deta*3;
+                    u_dat.increase_deta = 'true';
                 end
                 u_dat.unfalsified_controller_index = temp;
                 
@@ -101,10 +100,12 @@ elseif flag == 2
                 u_dat.prev_index = u_dat.cur_index;
                 u_dat.cur_index = u_dat.unfalsified_controller_index(next_controller);
                 u_dat.eta = u_dat.eta + u_dat.deta;
+                if u_dat.increase_deta
+                    u_dat.deta = u_dat.deta*3;
+                    u_dat.increase_deta = 'false';
+                end
             else
                 % Do nothing and continue with current active controller
-                % % This is no longer LICLA but ICLA as increase in
-                %   nonlinear!!
                 u_dat.deta = 0.5;
             end
             
