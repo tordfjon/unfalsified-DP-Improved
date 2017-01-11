@@ -1,7 +1,7 @@
 syms kp ki kd s e
 global epsilon delta
 frg_roots = solve((kd+kp*e)*s^2+(kp+ki*e)*s+ki==0,s);
-frg_roots = solve((kd+kp*e)*s^2+(kp+ki*e)*s+ki==0,s);
+% frg_roots = solve((kd+kp*e)*s^2+(kp+ki*e)*s+ki==0,s);
 
 n = size(K,1);
 index = (1:n);

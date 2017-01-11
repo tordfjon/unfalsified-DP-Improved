@@ -4,9 +4,10 @@
 
 
 function [sys,x0,str,ts] = Supervisor_detectable(t,x,u,flag, ...
-                                   C_p, C_i, C_d,rho)  %C_p, C_i, C_d used for determining the initial number of candidate controllers
+                                   C_p, C_i, C_d, rho, ...
+                                   switching_method , eta , deta )  
 persistent u_dat
-global delta %delta - sampling time
+global delta
 
 
 %initialize
@@ -14,7 +15,7 @@ sys=[];x0=[];str=[];ts=[];
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%    >>>  Initialization routine  <<<     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if flag == 0
    
-   [u_dat.K, u_dat.total_number] = form_K_set(C_p, C_i, C_d); % TORD: Output is the entire controller set (\Theta) with PID parameters and m is the number of combinations possible, i.e. u_dat.m = ni*np*nd; 
+   [u_dat.K, u_dat.total_number] = form_K(C_p, C_i, C_d); % TORD: Output is the entire controller set (\Theta) with PID parameters and m is the number of combinations possible, i.e. u_dat.m = ni*np*nd; 
    u_dat.m = 1;%u_dat.total_number;    % initial number of elements of the candidate controller set K
                                     
    
@@ -27,23 +28,20 @@ if flag == 0
    sizes.NumSampleTimes = 1;                        %Number of sample times
    sys = simsizes(sizes);
    
-   u_dat.switching_method = 'LICLA';
+   u_dat.switching_method = switching_method;
    u_dat.J     = zeros(u_dat.total_number,1);
-   u_dat.index = [1:u_dat.total_number]';
+   u_dat.index = (1:u_dat.total_number)';
 
    [u_dat.kp, u_dat.ki, u_dat.kd] = set_K_parameter(u_dat.K, u_dat.index, u_dat.m); % Tord: Starting from behind, with current index of u_dat.m which is the number of controllers
    u_dat.cur_index = u_dat.m;
    u_dat.prev_index = u_dat.cur_index;
    
-      %% Variables for data storage
-   u_dat.temp = zeros(u_dat.total_number,0); %%% for determining instantaneous cost
-   u_dat.myj = zeros(u_dat.total_number,0);
    u_dat.count = 0;
    u_dat.t_switch = 0;
    
         %% Variables for LICLA
-    u_dat.eta   = 5;
-    u_dat.deta  = 0.5;
+    u_dat.eta   = eta;
+    u_dat.deta  = deta;
     u_dat.increase_deta = 'false';
     u_dat.unfalsified_controller_index = u_dat.index;
    
@@ -57,17 +55,17 @@ elseif flag == 1
 elseif flag == 2 
     u_dat.count = u_dat.count + 1;
     
-    u_dat.J = u;                             %% Input u(n) is the cost of n th Candidate Controller
+    u_dat.J = u;
     
     switch u_dat.switching_method
         case 'epsilon'
             j=0;                                     %% Initilize the number of Unfalsified Controller
-            p = u_dat.J(u_dat.cur_index);            %% Cost of current Controller
+            p = u_dat.J(u_dat.cur_index);            %% Current falsification limit
             unfalsified_ball_index = [];
             
-            for i=1:u_dat.total_number               % u_dat.m - # of unfalsified controller candidates
-                if u_dat.J(i)+rho < p        %% if ith controller is unfalsified
-                    j = j+1;                         %% j : # of unfalsified Controllers
+            for i=1:u_dat.total_number
+                if u_dat.J(i)+rho < p               %% if ith controller is unfalsified
+                    j = j+1;                        %% j : # of unfalsified Controllers
                     unfalsified_ball_index(j) = i;
                 else
                     % Do nothing
@@ -75,8 +73,8 @@ elseif flag == 2
             end
             
             time_since_last = t-u_dat.t_switch;
-            if isempty(unfalsified_ball_index) %|| time_since_last < 1% i.e. no controller has better performance including hysteresis step
-                % Algorithm does not change controller
+            if isempty(unfalsified_ball_index) %|| time_since_last < 1
+                % Do nothing and continue with current active controller
             else % The unfalsified ball index set is non-empty, therfore a new controller is chosen
                 [~, next_controller] = min(u_dat.J(unfalsified_ball_index));   % New Controller selection Criterion
                 [u_dat.kp, u_dat.ki, u_dat.kd] = set_K_parameter(u_dat.K, unfalsified_ball_index, next_controller);
@@ -86,7 +84,37 @@ elseif flag == 2
             end
     
         case 'LICLA' %LICLA with only self-falsification
-            % Do nothing as for now
+            if u_dat.J(u_dat.cur_index) > u_dat.eta
+                u_dat.unfalsified_controller_index = u_dat.unfalsified_controller_index(u_dat.unfalsified_controller_index ~= u_dat.cur_index);
+                
+                u_dat.eta = u_dat.eta + u_dat.deta;
+                
+                L = length(u_dat.unfalsified_controller_index); 
+                j = 0;
+                temp = [];
+                for k = 1:L
+                    controller_id = u_dat.unfalsified_controller_index(k);
+                    if u_dat.J(controller_id) < u_dat.eta
+                        j = j+1;
+                        temp(j) = controller_id;
+                    end
+                end
+                
+
+                if isempty(temp) % Reinitialize falsified controllers that might performe better with varying system
+                    temp = u_dat.index;
+                end
+                u_dat.unfalsified_controller_index = temp;
+                
+                [~, next_controller] = min(u_dat.J(u_dat.unfalsified_controller_index));   % New Controller selection Criterion
+                [u_dat.kp, u_dat.ki, u_dat.kd] = set_K_parameter(u_dat.K, u_dat.unfalsified_controller_index, next_controller);
+                u_dat.prev_index = u_dat.cur_index;
+                u_dat.cur_index = u_dat.unfalsified_controller_index(next_controller);
+                
+            else
+                % Do nothing and continue with current active controller
+            end
+        case 'ICLA-1'
             if u_dat.J(u_dat.cur_index) > u_dat.eta
                 temp = u_dat.unfalsified_controller_index(u_dat.unfalsified_controller_index ~= u_dat.cur_index);
                 if isempty(temp) % Reinitialize falsified controllers that might performe better with varying system
@@ -108,9 +136,33 @@ elseif flag == 2
                 % Do nothing and continue with current active controller
                 u_dat.deta = 0.5;
             end
-            
+        case 'ICLA-2'
+            if u_dat.J(u_dat.cur_index) > u_dat.eta
+                temp = u_dat.unfalsified_controller_index(u_dat.unfalsified_controller_index ~= u_dat.cur_index);
+                if isempty(temp) % Reinitialize falsified controllers that might performe better with varying system
+                    temp = u_dat.index;
+                    u_dat.increase_deta = 'true';
+                end
+                u_dat.unfalsified_controller_index = temp;
+                
+                [~, next_controller] = min(u_dat.J(u_dat.unfalsified_controller_index));   % New Controller selection Criterion
+                [u_dat.kp, u_dat.ki, u_dat.kd] = set_K_parameter(u_dat.K, u_dat.unfalsified_controller_index, next_controller);
+                u_dat.prev_index = u_dat.cur_index;
+                u_dat.cur_index = u_dat.unfalsified_controller_index(next_controller);
+                u_dat.eta = u_dat.eta + u_dat.deta;
+                if u_dat.increase_deta
+                    u_dat.deta = u_dat.deta*3;
+                    if u_dat.deta > 50
+                        u_dat.deta = 50;
+                    end
+                    u_dat.increase_deta = 'false';
+                end
+            else
+                % Do nothing and continue with current active controller
+                u_dat.deta = 0.5;
+            end
         otherwise 
-            error('Chose an switching algorithm that is available; epsilon or LICLA')
+            error('Chose an switching algorithm that is available; epsilon, LICLA or ICLA')
     end
    
    
@@ -119,34 +171,6 @@ elseif flag == 2
    sys = [];
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%   >>>  Output routine  <<<    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 elseif flag == 3
-
-%    if (u_dat.count == 50)
-%      Test1=45;
-%      plot_Contr_index('change') %for simulink scope initialization, changing the attributes of controller index scope lines
-%    end
-
-   
-   %%Tord: initializing the vector u_dat.controller which holds indexes of all "as of yet" unfalsified controllers. 
-   % The array is updated at every output call. Q: Why "inf"? A: Plotting
-   % "inf" will appear as nothing and the vector should be of length equal
-   % to number of all controllers
-%    u_dat.controller=[]; % For online Simulink Plot of unfalsified controller indices
-% % %    for i=1:u_dat.total_number
-% % %       u_dat.controller=[u_dat.controller inf];
-% % %    end
-%    u_dat.controller = u_dat.index; %Just to make lines visible at active controller plot
-
-   %Tord: As u_dat.m is updated to range only the, as of now, unfalsified
-   %controllers. u_dat.controller is initialized as inf in all indicies and
-   %has length equal that of the total number of controllers.
-   %u_dat.controller is then updated s.t. the index of those controllers
-   %who are unfalsified has numbered values. The rest (falsified
-   %controllers) is "inf". Counting only the u_dat.m first indexes of
-   %u_dat.index, which is the ones unfalsified by data. 
-% % %    for (i=1:u_dat.m)
-% % %       u_dat.controller(u_dat.index(i)) = u_dat.index(i);
-% % %    end
-
 
    
    
@@ -161,3 +185,21 @@ elseif flag == 9
    disp('Number of unfalsified controllers at the end = ')
    disp(u_dat.m)
 end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
