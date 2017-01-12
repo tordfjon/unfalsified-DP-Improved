@@ -19,14 +19,15 @@ total_old = str2num(get_param(yaw_demux_1,'Outputs'));
 
 
 if (total_old ~= total_new)
-      yaw_per_monitor =  char(find_system(gcb,'LookUnderMasks','all','Tag','yaw_per_monitor'));
+    yaw_unfalsification  = char(find_system(gcb,'LookUnderMasks','all','Tag','yaw_unfalsification'));  
+    yaw_per_monitor =  char(find_system(gcb,'LookUnderMasks','all','Tag','yaw_per_monitor'));
       %% deleting existing lines between mux & demux blocks      
       for(i=1:total_old)      
           d_1 = sprintf('%s/%d',get_param(yaw_demux_1,'Name'),i);
           d_2 = sprintf('%s/%d',get_param(yaw_demux_2,'Name'),i);
           m_1 = sprintf('%s/%d',get_param(yaw_mux_1,'Name'),i);
           m_2 = sprintf('%s/%d',get_param(yaw_mux_2,'Name'),i);
-          delete_line(gcb,d_1,m_1);
+          delete_line(yaw_unfalsification,d_1,m_1);
           delete_line(yaw_per_monitor,d_2,m_2);
       end
 

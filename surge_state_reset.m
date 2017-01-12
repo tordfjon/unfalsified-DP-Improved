@@ -3,7 +3,7 @@
 % in order to reduce unwanted abrupt peaks in control signal u(t). Also generates trigger signal for the same purpose.
 
 function [sys,x0,str,ts] = surge_state_reset(t,x,u,flag, epsilon, delta)
-persistent u_pid
+persistent surge_u_pid
 
 % initialize
 sys=[];x0=[];str=[];ts=[];
@@ -15,44 +15,61 @@ if flag == 0
    sizes.NumContStates  = 0;
    sizes.NumDiscStates  = 0;   
    sizes.NumOutputs     = 3;
-   sizes.NumInputs      = 7;
+   sizes.NumInputs      = 8;
    sizes.DirFeedthrough = 1;
    sizes.NumSampleTimes = 1;
    sys = simsizes(sizes);
    
-   u_pid.kp=0; u_pid.ki = 0; u_pid.kd = 0;    %%% Initializing
-   u_pid.trigger = 1;
-   u_pid.delta_x = [0; 0];
-   u_pid.r = 0; u_pid.y = 0;
-   u_pid.state_i=0;  u_pid.state_d =0;
-   u_pid.count = 0;
+   surge_u_pid.kp = 0; 
+   surge_u_pid.ki = 0; 
+   surge_u_pid.kd = 0;    %%% Initializing
+   
+   surge_u_pid.trigger = 1;
+   surge_u_pid.new_slow_state  = 0;
+   surge_u_pid.new_fast_state  = 0; 
+   
+   surge_u_pid.r      = 0; 
+   surge_u_pid.y      = 0;
+   surge_u_pid.u_prev = 0;   
+   surge_u_pid.count  = 0;
    
    ts  = [delta 0];  % sample time is delta
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%   
 elseif flag == 1
    sys = [];
-elseif flag == 2 
+elseif flag == 2    
     sys = [];
     
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%    >>>  OUTPUT routine  <<<   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 elseif flag == 3
   kp_new = u(1);  ki_new = u(2);  kd_new = u(3);
-  u_pid.r = u(4); u_pid.y=u(5);  
-  u_pid.state_i = u(6); u_pid.state_d = u(7);
-  %%% If there is a change in Controller parameters, then reset the states & the trigger signal
-  %%% But do not reset the states at the very first iteration, when parameters changes from zero to the initial values
-  if ((u_pid.kp ~= u(1) || u_pid.ki ~= u(2) || u_pid.kd ~= u(3)) && (u_pid.count ~= 0))         
-      [u_pid.delta_x, u_pid.trigger] = ...                               
-                      new_states(   u_pid.kp, u_pid.ki, u_pid.kd,...
-                                    kp_new, ki_new, kd_new, u_pid.y, u_pid.state_i,...
-                                    u_pid.state_d, u_pid.r, u_pid.trigger, epsilon, delta);   
-  else   
-      u_pid.delta_x = [0; 0];   
+  surge_u_pid.r       = u(4); 
+  surge_u_pid.y       = u(5);  
+  surge_u_pid.u_prev  = u(6);
+  
+  old_fast_state = u(7);
+  old_slow_state = u(8);
+  
+  surge_u_pid.new_fast_state  = old_fast_state; 
+  surge_u_pid.new_slow_state  = old_slow_state; 
+
+  if (surge_u_pid.kp ~= kp_new || surge_u_pid.ki ~= ki_new || surge_u_pid.kd ~= kd_new)  && (surge_u_pid.count ~= 0)         
+      [surge_u_pid.new_slow_state , surge_u_pid.new_fast_state , surge_u_pid.trigger] = ...                               
+                      new_states_2rd(   surge_u_pid.kp , surge_u_pid.ki , surge_u_pid.kd ,...
+                                        kp_new , ki_new , kd_new , surge_u_pid.y , ...
+                                        surge_u_pid.r , surge_u_pid.u_prev , surge_u_pid.trigger ,...
+                                        epsilon , delta );
+  elseif surge_u_pid.count == 0
+      % Initialization of fast state to handle initial conditions
+      surge_u_pid.new_fast_state = epsilon * (u(4)-u(5)); 
   end
-  u_pid.kp = kp_new; u_pid.ki = ki_new; u_pid.kd = kd_new;  %% update states
-  u_pid.count = u_pid.count + 1;
+  
+  surge_u_pid.kp      = kp_new; 
+  surge_u_pid.ki      = ki_new; 
+  surge_u_pid.kd      = kd_new;  
+  surge_u_pid.count   = surge_u_pid.count + 1;
   % out put new integrator state, new differentiator state and trigger
-  sys = [u_pid.state_i+u_pid.delta_x(1,1);  u_pid.state_d+u_pid.delta_x(2,1);   u_pid.trigger];
+  sys = [surge_u_pid.new_fast_state ; surge_u_pid.trigger ; surge_u_pid.new_slow_state];
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 elseif flag == 4
