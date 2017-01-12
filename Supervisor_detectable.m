@@ -5,7 +5,7 @@
 
 function [sys,x0,str,ts] = Supervisor_detectable(t,x,u,flag, ...
                                    C_p, C_i, C_d, rho, ...
-                                   switching_method , eta , deta )  
+                                   switching_method , eta , deta , deta_lim , deta_factor)  
 persistent u_dat
 global delta
 
@@ -87,7 +87,6 @@ elseif flag == 2
             if u_dat.J(u_dat.cur_index) > u_dat.eta
                 u_dat.unfalsified_controller_index = u_dat.unfalsified_controller_index(u_dat.unfalsified_controller_index ~= u_dat.cur_index);
                 
-                u_dat.eta = u_dat.eta + u_dat.deta;
                 
                 L = length(u_dat.unfalsified_controller_index); 
                 j = 0;
@@ -101,65 +100,97 @@ elseif flag == 2
                 end
                 
 
-                if isempty(temp) % Reinitialize falsified controllers that might performe better with varying system
-                    temp = u_dat.index;
-                end
-                u_dat.unfalsified_controller_index = temp;
+                if ~isempty(temp) % Reinitialize falsified controllers that might performe better with varying system
+                    u_dat.unfalsified_controller_index = temp;
                 
-                [~, next_controller] = min(u_dat.J(u_dat.unfalsified_controller_index));   % New Controller selection Criterion
-                [u_dat.kp, u_dat.ki, u_dat.kd] = set_K_parameter(u_dat.K, u_dat.unfalsified_controller_index, next_controller);
-                u_dat.prev_index = u_dat.cur_index;
-                u_dat.cur_index = u_dat.unfalsified_controller_index(next_controller);
+                    [~, next_controller] = min(u_dat.J(u_dat.unfalsified_controller_index));   % New Controller selection Criterion
+                    [u_dat.kp, u_dat.ki, u_dat.kd] = set_K_parameter(u_dat.K, u_dat.unfalsified_controller_index, next_controller);
+                    u_dat.prev_index = u_dat.cur_index;
+                    u_dat.cur_index = u_dat.unfalsified_controller_index(next_controller);
+                    
+%                     u_dat.eta = u_dat.eta + u_dat.deta;
+                else
+                    u_dat.unfalsified_controller_index = u_dat.index;
+                    u_dat.eta = u_dat.eta + u_dat.deta;
+                end
                 
             else
                 % Do nothing and continue with current active controller
             end
         case 'ICLA-1'
             if u_dat.J(u_dat.cur_index) > u_dat.eta
-                temp = u_dat.unfalsified_controller_index(u_dat.unfalsified_controller_index ~= u_dat.cur_index);
-                if isempty(temp) % Reinitialize falsified controllers that might performe better with varying system
-                    temp = u_dat.index;
-                    u_dat.increase_deta = 'true';
-                end
-                u_dat.unfalsified_controller_index = temp;
+                u_dat.unfalsified_controller_index = u_dat.unfalsified_controller_index(u_dat.unfalsified_controller_index ~= u_dat.cur_index);
                 
-                [~, next_controller] = min(u_dat.J(u_dat.unfalsified_controller_index));   % New Controller selection Criterion
-                [u_dat.kp, u_dat.ki, u_dat.kd] = set_K_parameter(u_dat.K, u_dat.unfalsified_controller_index, next_controller);
-                u_dat.prev_index = u_dat.cur_index;
-                u_dat.cur_index = u_dat.unfalsified_controller_index(next_controller);
-                u_dat.eta = u_dat.eta + u_dat.deta;
-                if u_dat.increase_deta
-                    u_dat.deta = u_dat.deta*3;
-                    u_dat.increase_deta = 'false';
+                % Falsification of offline controllers
+                L = length(u_dat.unfalsified_controller_index); 
+                j = 0;
+                temp = [];
+                for k = 1:L
+                    controller_id = u_dat.unfalsified_controller_index(k);
+                    if u_dat.J(controller_id) < u_dat.eta
+                        j = j+1;
+                        temp(j) = controller_id;
+                    end
+                end
+                
+                if ~isempty(temp) % Reinitialize falsified controllers that might performe better with varying system
+                    u_dat.unfalsified_controller_index = temp;
+                    
+                    [~, next_controller] = min(u_dat.J(u_dat.unfalsified_controller_index));   % New Controller selection Criterion
+                    [u_dat.kp, u_dat.ki, u_dat.kd] = set_K_parameter(u_dat.K, u_dat.unfalsified_controller_index, next_controller);
+                    u_dat.prev_index = u_dat.cur_index;
+                    u_dat.cur_index = u_dat.unfalsified_controller_index(next_controller);
+                    
+                    u_dat.deta = deta;
+%                     u_dat.eta = u_dat.eta + u_dat.deta;
+                else
+                    u_dat.unfalsified_controller_index = u_dat.index;
+
+                    u_dat.eta = u_dat.eta + u_dat.deta;
+                    u_dat.deta = u_dat.deta * deta_factor;
                 end
             else
                 % Do nothing and continue with current active controller
-                u_dat.deta = 0.5;
+                u_dat.deta = deta;
             end
         case 'ICLA-2'
             if u_dat.J(u_dat.cur_index) > u_dat.eta
-                temp = u_dat.unfalsified_controller_index(u_dat.unfalsified_controller_index ~= u_dat.cur_index);
-                if isempty(temp) % Reinitialize falsified controllers that might performe better with varying system
-                    temp = u_dat.index;
-                    u_dat.increase_deta = 'true';
-                end
-                u_dat.unfalsified_controller_index = temp;
+                u_dat.unfalsified_controller_index = u_dat.unfalsified_controller_index(u_dat.unfalsified_controller_index ~= u_dat.cur_index);
                 
-                [~, next_controller] = min(u_dat.J(u_dat.unfalsified_controller_index));   % New Controller selection Criterion
-                [u_dat.kp, u_dat.ki, u_dat.kd] = set_K_parameter(u_dat.K, u_dat.unfalsified_controller_index, next_controller);
-                u_dat.prev_index = u_dat.cur_index;
-                u_dat.cur_index = u_dat.unfalsified_controller_index(next_controller);
-                u_dat.eta = u_dat.eta + u_dat.deta;
-                if u_dat.increase_deta
-                    u_dat.deta = u_dat.deta*3;
-                    if u_dat.deta > 50
-                        u_dat.deta = 50;
+                % Falsification of offline controllers
+                L = length(u_dat.unfalsified_controller_index); 
+                j = 0;
+                temp = [];
+                for k = 1:L
+                    controller_id = u_dat.unfalsified_controller_index(k);
+                    if u_dat.J(controller_id) < u_dat.eta
+                        j = j+1;
+                        temp(j) = controller_id;
                     end
-                    u_dat.increase_deta = 'false';
+                end
+                
+                if ~isempty(temp) % Reinitialize falsified controllers that might performe better with varying system
+                    u_dat.unfalsified_controller_index = temp;
+                    
+                    [~, next_controller] = min(u_dat.J(u_dat.unfalsified_controller_index));   % New Controller selection Criterion
+                    [u_dat.kp, u_dat.ki, u_dat.kd] = set_K_parameter(u_dat.K, u_dat.unfalsified_controller_index, next_controller);
+                    u_dat.prev_index = u_dat.cur_index;
+                    u_dat.cur_index = u_dat.unfalsified_controller_index(next_controller);
+                    
+                    u_dat.deta = deta;
+%                     u_dat.eta = u_dat.eta + u_dat.deta;
+                else 
+                    u_dat.unfalsified_controller_index = u_dat.index;
+                    
+                    u_dat.eta = u_dat.eta + u_dat.deta;
+                    u_dat.deta = u_dat.deta * deta_factor;
+                    if u_dat.deta > deta_lim
+                        u_dat.deta = deta_lim;
+                    end
                 end
             else
                 % Do nothing and continue with current active controller
-                u_dat.deta = 0.5;
+                u_dat.deta = deta;
             end
         otherwise 
             error('Chose an switching algorithm that is available; epsilon, LICLA or ICLA')
